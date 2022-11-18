@@ -132,6 +132,100 @@ async function drawMap() {
         // otherwise, return lightgrey
 
     }
+
+    // define tooltips (mostly just code from my asgn 5)
+    function makeTooltip(e, message) {
+
+        // add tooltip
+        let x = e.clientX;
+        let y = e.clientY - 50;
+        // add tooltip container
+        d3.select("svg")
+            .append("rect")
+            .attr("class", "tooltip " + message.name.split(" ").join("").split(".").join(""))
+            .attr("x", x)
+            .attr("y", y)
+            .attr("width", 200)
+            .attr("height", 100)
+            .attr("fill-opacity", 0)
+            .attr("stroke-opacity", 0)
+            .transition()
+            .duration(500)
+            .attr("stroke-opacity", 1)
+            .attr("fill-opacity", 1);
+
+        // add tooltip text
+        // Referenced this for multi-line text in SVG:
+        // https://stackoverflow.com/questions/31469134/how-to-display-multiple-lines-of-text-in-svg
+        let text = d3.select("svg")
+            .append("text");
+
+        text.attr("class", "tooltip message " + message.name.split(" ").join("").split(".").join(""))
+            .attr("x", x)
+            .attr("y", y)
+            .attr("dy", 20)
+            .attr("dx", 15)
+
+            .attr("fill-opacity", 0)
+            .transition()
+            .duration(500)
+            .attr("fill-opacity", 1);
+
+
+        text.append("tspan")
+            .text(message.name);
+
+        text.append("tspan")
+            .attr("x", x)
+            .attr("dy", 25)
+            .attr("dx", 15)
+            .text("Pop. Density:");
+
+        text.append("tspan")
+            .attr("x", x)
+            .attr("dy", 15)
+            .attr("dx", 15)
+            .text(() => {
+                if (message.density != null) {
+                    return "" + message.density + " people per sq. mile";
+                }
+                return "NOT AVAILABLE";
+            });
+
+        text.append("tspan")
+            .attr("x", x)
+            .attr("dy", 25)
+            .attr("dx", 15)
+            .text(() => {
+                if (message.rate != null) {
+                    return "Unemployment:\t" + (Math.floor(message.rate * 10000) / 100) + "%";
+                } else {
+                    "Unemployment:\t NOT AVAILABLE";
+                }
+            });
+    }
+
+    function deleteTooltip(e, name) {
+
+        d3.selectAll("." + name.split(" ").join("").split(".").join(""))
+            .transition()
+            .duration(500)
+            .attr("fill-opacity", 0)
+            .attr("stroke-opacity", 0);
+
+        // Schedule timer to delete div later
+        let timer = d3.timer((elapsed) => {
+            // after 500 miliseconds, delete element
+            // and stop timer
+            if (elapsed >= 500) {
+                d3.selectAll("." + name.split(" ").join(""))
+                    .remove();
+                timer.stop();
+            }
+        });
+    }
+
+
     // draw map
     svg.append("g")
         .selectAll("path")
@@ -141,8 +235,35 @@ async function drawMap() {
         .attr("class", "boundary")
         .attr("d", path)
         .style("fill", fill_map)
+        .on("mouseover", (e, d) => {
+            // let message = {
+            //     name: `${d.properties["NAME"]} County`,
+            //     density: d.properties.density,
+            //     rate: d.properties.rate
+
+            // }
+            let message = {
+                name: `NOT AVAILABLE`,
+                density: null,
+                rate: null
+
+            }
+            if (d) {
+                message.name = `${d.properties["NAME"]} County`;
+                if (d.properties.density) {
+                    message.density = d.properties.density;
+                }
+                if (d.properties.rate) {
+                    message.rate = d.properties.rate;
+                }
+            }
+            makeTooltip(e, message);
+        })
+        .on("mouseout", (e, d) => {
+            deleteTooltip(e, `${d.properties["NAME"]} County`);
+        })
         .style("stroke", "black")
-        .style("stroke-width", 0.5);
+        .style("stroke-width", 0.5)
 
     // drawing legend
     // borrowed mostly from here: https://bl.ocks.org/mbostock/5562380
